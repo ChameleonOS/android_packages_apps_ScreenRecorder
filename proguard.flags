@@ -1,0 +1,5 @@
+# Keep all Fragments in this package, which are used by reflection.
+-keep class org.chameleonos.screenrecorder.*
+
+# Keep click responders
+

@@ -26,7 +26,6 @@ public class ScreenRecordReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        //context.checkCallingPermission(Manifest.permission.RECORD_SCREEN);
         if (ACTION_NOTIFY_RECORD_SERVICE.equals(intent.getAction())) {
             Intent serviceIntent = new Intent(context, ScreenRecorderService.class);
             serviceIntent.setAction(ACTION_NOTIFY_RECORD_SERVICE);

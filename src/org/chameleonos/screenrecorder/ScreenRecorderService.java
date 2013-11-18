@@ -104,10 +104,10 @@ public class ScreenRecorderService extends IntentService
         final Resources res = getResources();
 
         int[] dimensions = getVideoDimensions(res, display);
-        int frameRate = Settings.System.getInt(getContentResolver(),
-                Settings.System.SCREEN_RECORDER_FRAMERATE,
+        int bitRate = Settings.System.getInt(getContentResolver(),
+                Settings.System.SCREEN_RECORDER_BITRATE,
                 res.getInteger(R.integer.config_screenRecorderFramerate));
-        sScreenRecorder.init(rotation, dimensions[0], dimensions[1], frameRate, 0);
+        sScreenRecorder.init(rotation, dimensions[0], dimensions[1], bitRate, 0);
         File f = new File(RECORDER_PATH);
         if (!f.exists()) {
             if (!f.mkdir() || f.isDirectory()) {

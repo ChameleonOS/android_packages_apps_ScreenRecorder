@@ -14,5 +14,12 @@
         <service android:name="org.chameleonos.screenrecorder.ScreenRecorderService"
                  android:exported="false"
                  android:permission="android.permission.RECORD_SCREEN"/>
+
+        <receiver android:name=".ScreenRecordReceiver"
+                  android:permission="android.permission.RECORD_SCREEN">
+            <intent-filter>
+                <action android:name="org.chameleonos.action.NOTIFY_RECORD_SERVICE"/>
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

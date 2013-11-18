@@ -16,36 +16,36 @@
 
 package org.chameleonos.screenrecorder;
 
+import android.app.IntentService;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Point;
 import android.media.MediaActionSound;
 import android.media.screenrecorder.ScreenRecorder;
 import android.media.screenrecorder.ScreenRecorder.ScreenRecorderCallbacks;
 import android.net.Uri;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.RemoteException;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Display;
+import android.view.Surface;
 import android.view.WindowManager;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class ScreenRecorderService extends Service
+public class ScreenRecorderService extends IntentService
         implements ScreenRecorderCallbacks {
+    public static final String ACTION_NOTIFY_RECORD_SERVICE
+            = "org.chameleonos.action.NOTIFY_RECORD_SERVICE";
+
     private static final String TAG = "ScreenRecorderService";
     private static final String RECORDER_FOLDER = "ScreenRecorder";
     private static final String RECORDER_PATH =
@@ -62,32 +62,15 @@ public class ScreenRecorderService extends Service
     private static ScreenRecorder sScreenRecorder;
     private static MediaActionSound sActionSound = new MediaActionSound();
 
-    private Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case 1:
-                    if (sScreenRecorder == null) {
-                        sScreenRecorder = ScreenRecorder.getInstance();
-                        sScreenRecorder.setScreenRecorderCallbacks(ScreenRecorderService.this);
-                    }
-                    startOrStopRecording();
-                    final Messenger callback = msg.replyTo;
-                    mHandler.post(new Runnable() {
-                        @Override public void run() {
-                            Message reply = Message.obtain(null, 1);
-                            try {
-                                callback.send(reply);
-                            } catch (RemoteException e) {
-                            }
-                        }
-                    });
-                    break;
-            }
-        }
-    };
+    public ScreenRecorderService() {
+        super(TAG);
+    }
 
     private void startOrStopRecording() {
+        if (sScreenRecorder == null) {
+            sScreenRecorder = ScreenRecorder.getInstance();
+            sScreenRecorder.setScreenRecorderCallbacks(this);
+        }
         final int state = sScreenRecorder.getState();
         if (state != ScreenRecorder.STATE_RECORDING) {
             startRecording();
@@ -118,17 +101,8 @@ public class ScreenRecorderService extends Service
         final ContentResolver resolver = getContentResolver();
         final Resources res = getResources();
 
-        // get the dimensions for the output video
-        String dimensionString = Settings.System.getString(resolver,
-                Settings.System.SCREEN_RECORDER_OUTPUT_DIMENSIONS);
-        if (TextUtils.isEmpty(dimensionString)) {
-            dimensionString = res.getString(R.string.config_screenRecorderOutputDimensions);
-        }
-        int[] dimensions = parseDimensions(dimensionString);
-        if (dimensions == null) {
-            dimensions = new int[] {720, 1280};
-        }
-        int frameRate = Settings.System.getInt(resolver,
+        int[] dimensions = getVideoDimensions(res, display);
+        int frameRate = Settings.System.getInt(getContentResolver(),
                 Settings.System.SCREEN_RECORDER_FRAMERATE,
                 res.getInteger(R.integer.config_screenRecorderFramerate));
         sScreenRecorder.init(rotation, dimensions[0], dimensions[1], frameRate, 0);
@@ -165,15 +139,9 @@ public class ScreenRecorderService extends Service
         postRecordingErrorNotification(error);
     }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        if (sScreenRecorder != null) startOrStopRecording();
-        return super.onStartCommand(intent, flags, startId);
-    }
-
     private void postRecordingNotification() {
-        Intent intent = new Intent(this, ScreenRecorderService.class);
-        PendingIntent contentIntent = PendingIntent.getService(this, 0, intent, 0);
+        Intent intent = new Intent(ACTION_NOTIFY_RECORD_SERVICE);
+        PendingIntent contentIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
         NotificationManager nm =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         Notification notice = new Notification.Builder(this)
@@ -224,6 +192,29 @@ public class ScreenRecorderService extends Service
         nm.notify(NOTIFICATION_ID, notice);
     }
 
+    private int[] getVideoDimensions(Resources res, Display display) {
+        String dimensionString = Settings.System.getString(getContentResolver(),
+                Settings.System.SCREEN_RECORDER_OUTPUT_DIMENSIONS);
+        if (TextUtils.isEmpty(dimensionString)) {
+            dimensionString = res.getString(R.string.config_screenRecorderOutputDimensions);
+        }
+        int[] dimensions = parseDimensions(dimensionString);
+        if (dimensions == null) {
+            dimensions = new int[] {720, 1280};
+        }
+
+        // if rotation is Surface.ROTATION_0 and width>height swap
+        final Point p = new Point();
+        display.getRealSize(p);
+        if (display.getRotation() == Surface.ROTATION_0 && (p.x > p.y)) {
+            int tmp = dimensions[0];
+            dimensions[0] = dimensions[1];
+            dimensions[1] = tmp;
+        }
+
+        return dimensions;
+    }
+
     private static int[] parseDimensions(String dimensions) {
         String[] tmp = dimensions.split("x");
         if (tmp.length < 2) return null;
@@ -239,7 +230,9 @@ public class ScreenRecorderService extends Service
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return new Messenger(mHandler).getBinder();
+    protected void onHandleIntent(Intent intent) {
+        if (ACTION_NOTIFY_RECORD_SERVICE.equals(intent.getAction())) {
+            startOrStopRecording();
+        }
     }
 }

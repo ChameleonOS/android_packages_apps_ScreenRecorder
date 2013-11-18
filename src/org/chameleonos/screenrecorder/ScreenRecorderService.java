@@ -24,8 +24,10 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.media.MediaActionSound;
+import android.media.MediaMetadataRetriever;
 import android.media.screenrecorder.ScreenRecorder;
 import android.media.screenrecorder.ScreenRecorder.ScreenRecorderCallbacks;
 import android.net.Uri;
@@ -174,6 +176,19 @@ public class ScreenRecorderService extends IntentService
                 .setSmallIcon(R.drawable.ic_notify_screen_recorder)
                 .setWhen(System.currentTimeMillis())
                 .setContentIntent(contentIntent);
+
+        // try and grab a frame as a preview
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        mmr.setDataSource(RECORDER_PATH + File.separator + sCurrentFileName);
+        Bitmap thumbnail = mmr.getFrameAtTime();
+        if (thumbnail != null) {
+            Notification.BigPictureStyle style =
+                    new Notification.BigPictureStyle()
+                            .bigPicture(thumbnail)
+                    .setSummaryText(getString(R.string.notification_recording_finished_text,
+                            sCurrentFileName));
+            b.setStyle(style);
+        }
 
         nm.notify(NOTIFICATION_ID, b.build());
     }

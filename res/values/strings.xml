@@ -14,5 +14,6 @@
 
     <string name="error_unable_to_create_directory">Unable to create output directory.</string>
     <string name="error_external_storage_unavailable">No external storage available.</string>
+    <string name="error_unable_to_start">Unable to start recording.</string>
 
 </resources>

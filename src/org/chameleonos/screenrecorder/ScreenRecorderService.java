@@ -120,7 +120,13 @@ public class ScreenRecorderService extends IntentService
         sCurrentFileName = getVideoFileName();
         final String fileName = RECORDER_PATH + File.separator + sCurrentFileName;
         Log.d(TAG, "Start recording screen to " + fileName);
-        sScreenRecorder.start(fileName);
+        try {
+            if (!sScreenRecorder.start(fileName)) {
+                postRecordingErrorNotification(getString(R.string.error_unable_to_start));
+            }
+        } catch (IllegalStateException e) {
+            postRecordingErrorNotification(getString(R.string.error_unable_to_start));
+        }
     }
 
     /* Screen recorder callbacks */

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">ScreenRecorder</string>
+
+    <string name="notification_recording_title">Η καταγραφή οθόνης βρίσκεται σε εξέλιξη</string>
+    <string name="notification_recording_text">Πατήστε αυτή την ειδοποίηση για να σταματήσετε την καταγραφή</string>
+
+    <string name="notification_recording_finished_title">Η καταγραφή αποθηκεύτηκε</string>
+    <string name="notification_recording_finished_text">Πατήστε για να δείτε %s</string>
+
+    <string name="notification_recording_error_title">Σφάλμα</string>
+    <string name="notification_recording_error_text">%s</string>
+
+    <string name="error_unable_to_create_directory">Δεν ήταν δυνατή η δημιουργία φακέλου αποθήκευσης.</string>
+    <string name="error_external_storage_unavailable">Δεν υπάρχει εξωτερικός χώρος αποθήκευσης.</string>
+    <string name="error_unable_to_start">Δεν είναι δυνατή η εκκίνηση της καταγραφής.</string>
+
+</resources>

@@ -110,7 +110,7 @@ public class ScreenRecorderService extends IntentService
         sScreenRecorder.init(rotation, dimensions[0], dimensions[1], bitRate, 0);
         File f = new File(RECORDER_PATH);
         if (!f.exists()) {
-            if (!f.mkdir() || f.isDirectory()) {
+            if (!f.mkdir()) {
                 Log.e(TAG, "Unable to create output directory " + RECORDER_PATH);
                 postRecordingErrorNotification(
                         getString(R.string.error_unable_to_create_directory));

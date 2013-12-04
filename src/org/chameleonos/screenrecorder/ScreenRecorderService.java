@@ -47,6 +47,10 @@ public class ScreenRecorderService extends IntentService
         implements ScreenRecorderCallbacks {
     public static final String ACTION_NOTIFY_RECORD_SERVICE
             = "org.chameleonos.action.NOTIFY_RECORD_SERVICE";
+    public static final String ACTION_NOTIFY_DELETE_SCREENRECORD
+            = "org.chameleonos.action.NOTIFY_DELETE_SCREENRECORD";
+    public static final String SCREENRECORD_PATH
+            = "org.chameleonos.screenrecorder.SCREENRECORD_PATH";
 
     private static final String TAG = "ScreenRecorderService";
     private static final String RECORDER_FOLDER = "ScreenRecorder";
@@ -54,7 +58,7 @@ public class ScreenRecorderService extends IntentService
             Environment.getExternalStorageDirectory().getAbsolutePath()
                     + File.separator + RECORDER_FOLDER;
 
-    private static final int NOTIFICATION_ID = 0xD34D;
+    public static final int NOTIFICATION_ID = 0xD34D;
 
     // videos will be saved using SCR_[date]_[time].mp4
     private static final String FILE_NAME_FORMAT = "SCR_%s.mp4";
@@ -180,6 +184,9 @@ public class ScreenRecorderService extends IntentService
         chooserIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK
                 | Intent.FLAG_ACTIVITY_NEW_TASK);
 
+        Intent deleteIntent = new Intent(ACTION_NOTIFY_DELETE_SCREENRECORD);
+        deleteIntent.putExtra(SCREENRECORD_PATH, RECORDER_PATH + File.separator + sCurrentFileName);
+
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(uri, "video/mp4");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -198,6 +205,10 @@ public class ScreenRecorderService extends IntentService
                 .addAction(com.android.internal.R.drawable.ic_menu_share,
                         getString(com.android.internal.R.string.share),
                         PendingIntent.getActivity(this, 0, chooserIntent,
+                                PendingIntent.FLAG_CANCEL_CURRENT))
+                .addAction(com.android.internal.R.drawable.ic_menu_delete,
+                        getString(com.android.internal.R.string.delete),
+                        PendingIntent.getBroadcast(this, 0, deleteIntent,
                                 PendingIntent.FLAG_CANCEL_CURRENT));
 
         // try and grab a frame as a preview

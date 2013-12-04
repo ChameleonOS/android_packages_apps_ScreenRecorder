@@ -59,6 +59,7 @@ public class ScreenRecorderService extends IntentService
     // videos will be saved using SCR_[date]_[time].mp4
     private static final String FILE_NAME_FORMAT = "SCR_%s.mp4";
     private static final String DATE_TIME_FORMAT = "yyyyMMdd_HHmmss";
+    private static final String SCREENRECORD_SHARE_SUBJECT_TEMPLATE = "ScreenRecord (%s)";
 
     private static String sCurrentFileName;
     private static ScreenRecorder sScreenRecorder;
@@ -165,10 +166,22 @@ public class ScreenRecorderService extends IntentService
     }
 
     private void postRecordingFinishedNotification() {
+        long screenRecordTime = System.currentTimeMillis();
+        Uri uri = Uri.fromFile(new File(RECORDER_PATH + File.separator + sCurrentFileName));
+        String subjectDate = new SimpleDateFormat("hh:mma, MMM dd, yyyy")
+            .format(new Date(screenRecordTime));
+        String subject = String.format(SCREENRECORD_SHARE_SUBJECT_TEMPLATE, subjectDate);
+        Intent sharingIntent = new Intent(Intent.ACTION_SEND);
+        sharingIntent.setType("video/mp4");
+        sharingIntent.putExtra(Intent.EXTRA_STREAM, uri);
+        sharingIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
+
+        Intent chooserIntent = Intent.createChooser(sharingIntent, null);
+        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK
+                | Intent.FLAG_ACTIVITY_NEW_TASK);
+
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(
-                Uri.fromFile(new File(RECORDER_PATH + File.separator + sCurrentFileName)),
-                "video/mp4");
+        intent.setDataAndType(uri, "video/mp4");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, intent, 0);
         NotificationManager nm =
@@ -180,8 +193,12 @@ public class ScreenRecorderService extends IntentService
                 .setContentText(getString(R.string.notification_recording_finished_text,
                         sCurrentFileName))
                 .setSmallIcon(R.drawable.ic_notify_screen_recorder)
-                .setWhen(System.currentTimeMillis())
-                .setContentIntent(contentIntent);
+                .setWhen(screenRecordTime)
+                .setContentIntent(contentIntent)
+                .addAction(com.android.internal.R.drawable.ic_menu_share,
+                        getString(com.android.internal.R.string.share),
+                        PendingIntent.getActivity(this, 0, chooserIntent,
+                                PendingIntent.FLAG_CANCEL_CURRENT));
 
         // try and grab a frame as a preview
         MediaMetadataRetriever mmr = new MediaMetadataRetriever();

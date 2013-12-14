@@ -4,13 +4,17 @@
     <string name="app_name">ScreenRecorder</string>
 
     <string name="notification_recording_title">Screen recording in progress</string>
-    <string name="notification_recording_text">Press this notification to stop recording</string>
 
     <string name="notification_recording_finished_title">Screen recording saved</string>
     <string name="notification_recording_finished_text">Touch to view %s</string>
 
     <string name="notification_recording_error_title">Screen recorder error</string>
     <string name="notification_recording_error_text">%s</string>
+
+    <string name="notification_video_processing_title">Processing recorded video</string>
+
+    <string name="notification_action_stop_recording">Stop recording</string>
+    <string name="notification_action_show_touch">Show touch</string>
 
     <string name="error_unable_to_create_directory">Unable to create output directory.</string>
     <string name="error_external_storage_unavailable">No external storage available.</string>

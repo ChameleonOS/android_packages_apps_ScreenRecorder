@@ -49,6 +49,8 @@ public class ScreenRecorderService extends IntentService
             = "org.chameleonos.action.NOTIFY_RECORD_SERVICE";
     public static final String ACTION_NOTIFY_DELETE_SCREENRECORD
             = "org.chameleonos.action.NOTIFY_DELETE_SCREENRECORD";
+    public static final String ACTION_NOTIFY_TOGGLE_SHOW_TOUCHES
+            = "org.chameleonos.action.NOTIFY_TOGGLE_SHOW_TOUCHES";
     public static final String SCREENRECORD_PATH
             = "org.chameleonos.screenrecorder.SCREENRECORD_PATH";
 
@@ -84,6 +86,7 @@ public class ScreenRecorderService extends IntentService
         } else {
             sActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
             sScreenRecorder.stop();
+            postProcessingNotification();
         }
     }
 
@@ -161,18 +164,44 @@ public class ScreenRecorderService extends IntentService
     }
 
     private void postRecordingNotification() {
+        // set an action for stopping recording
         Intent intent = new Intent(ACTION_NOTIFY_RECORD_SERVICE);
-        PendingIntent contentIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+        PendingIntent stopIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+        intent = new Intent(this, ScreenRecorderService.class);
+
+        // set an action for toggling show touches
+        intent.setAction(ACTION_NOTIFY_TOGGLE_SHOW_TOUCHES);
+        PendingIntent showTouchesIntent = PendingIntent.getService(this, 0,
+                intent, 0);
+        final boolean showTouches = Settings.System.getInt(getContentResolver(),
+                Settings.System.SHOW_TOUCHES, 0) == 1;
         NotificationManager nm =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         Notification notice = new Notification.Builder(this)
                 .setAutoCancel(false)
                 .setOngoing(true)
                 .setContentTitle(getString(R.string.notification_recording_title))
-                .setContentText(getString(R.string.notification_recording_text))
                 .setSmallIcon(R.drawable.ic_notify_screen_recorder)
                 .setWhen(System.currentTimeMillis())
-                .setContentIntent(contentIntent)
+                .setPriority(Integer.MAX_VALUE)
+                .addAction(R.drawable.ic_stop_recording,
+                        getString(R.string.notification_action_stop_recording), stopIntent)
+                .addAction(showTouches ? R.drawable.ic_show_touch_enabled
+                        : R.drawable.ic_show_touch_disabled,
+                        getString(R.string.notification_action_show_touch), showTouchesIntent)
+                .build();
+        nm.notify(NOTIFICATION_ID, notice);
+    }
+
+    private void postProcessingNotification() {
+        NotificationManager nm =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Notification notice = new Notification.Builder(this)
+                .setAutoCancel(true)
+                .setOngoing(false)
+                .setContentTitle(getString(R.string.notification_video_processing_title))
+                .setSmallIcon(R.drawable.ic_notify_screen_recorder)
+                .setWhen(System.currentTimeMillis())
                 .build();
         nm.notify(NOTIFICATION_ID, notice);
     }
@@ -288,8 +317,16 @@ public class ScreenRecorderService extends IntentService
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        if (ACTION_NOTIFY_RECORD_SERVICE.equals(intent.getAction())) {
+        final String action = intent.getAction();
+        if (ACTION_NOTIFY_RECORD_SERVICE.equals(action)) {
             startOrStopRecording();
+        } else if (ACTION_NOTIFY_TOGGLE_SHOW_TOUCHES.equals(action)) {
+            final boolean showTouches = Settings.System.getInt(getContentResolver(),
+                    Settings.System.SHOW_TOUCHES, 0) == 1;
+            Settings.System.putInt(getContentResolver(),
+                    Settings.System.SHOW_TOUCHES, showTouches ? 0 : 1);
+            // call postRecordingNotification so the icon gets updated based on this change
+            postRecordingNotification();
         }
     }
 }

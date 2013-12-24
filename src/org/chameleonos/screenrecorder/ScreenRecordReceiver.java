@@ -16,11 +16,18 @@
 
 package org.chameleonos.screenrecorder;
 
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 
+import java.io.File;
+
+import static org.chameleonos.screenrecorder.ScreenRecorderService.ACTION_NOTIFY_DELETE_SCREENRECORD;
 import static org.chameleonos.screenrecorder.ScreenRecorderService.ACTION_NOTIFY_RECORD_SERVICE;
+import static org.chameleonos.screenrecorder.ScreenRecorderService.NOTIFICATION_ID;
+import static org.chameleonos.screenrecorder.ScreenRecorderService.SCREENRECORD_PATH;
 
 public class ScreenRecordReceiver extends BroadcastReceiver {
 
@@ -30,6 +37,14 @@ public class ScreenRecordReceiver extends BroadcastReceiver {
             Intent serviceIntent = new Intent(context, ScreenRecorderService.class);
             serviceIntent.setAction(ACTION_NOTIFY_RECORD_SERVICE);
             context.startService(serviceIntent);
+        } else if (ACTION_NOTIFY_DELETE_SCREENRECORD.equals(intent.getAction())) {
+            File screenRecord = new File(intent.getExtras().getString(SCREENRECORD_PATH));
+            if (screenRecord.exists()) screenRecord.delete();
+            context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                    Uri.fromFile(screenRecord)));
+            NotificationManager notificationManager =
+                    (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.cancel(NOTIFICATION_ID);
         }
     }
 }

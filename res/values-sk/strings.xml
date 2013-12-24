@@ -4,7 +4,6 @@
     <string name="app_name">ScreenRecorder</string>
 
     <string name="notification_recording_title">Prebieha nahrávanie obrazovky</string>
-    <string name="notification_recording_text">Kliknite pre zastavenie nahrávania</string>
 
     <string name="notification_recording_finished_title">Nahrávka uložená</string>
     <string name="notification_recording_finished_text">Kliknite pre zobrazenie %s</string>

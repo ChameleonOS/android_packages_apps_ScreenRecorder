@@ -47,6 +47,12 @@ public class ScreenRecorderService extends IntentService
         implements ScreenRecorderCallbacks {
     public static final String ACTION_NOTIFY_RECORD_SERVICE
             = "org.chameleonos.action.NOTIFY_RECORD_SERVICE";
+    public static final String ACTION_NOTIFY_DELETE_SCREENRECORD
+            = "org.chameleonos.action.NOTIFY_DELETE_SCREENRECORD";
+    public static final String ACTION_NOTIFY_TOGGLE_SHOW_TOUCHES
+            = "org.chameleonos.action.NOTIFY_TOGGLE_SHOW_TOUCHES";
+    public static final String SCREENRECORD_PATH
+            = "org.chameleonos.screenrecorder.SCREENRECORD_PATH";
 
     private static final String TAG = "ScreenRecorderService";
     private static final String RECORDER_FOLDER = "ScreenRecorder";
@@ -54,11 +60,12 @@ public class ScreenRecorderService extends IntentService
             Environment.getExternalStorageDirectory().getAbsolutePath()
                     + File.separator + RECORDER_FOLDER;
 
-    private static final int NOTIFICATION_ID = 0xD34D;
+    public static final int NOTIFICATION_ID = 0xD34D;
 
     // videos will be saved using SCR_[date]_[time].mp4
     private static final String FILE_NAME_FORMAT = "SCR_%s.mp4";
     private static final String DATE_TIME_FORMAT = "yyyyMMdd_HHmmss";
+    private static final String SCREENRECORD_SHARE_SUBJECT_TEMPLATE = "ScreenRecord (%s)";
 
     private static String sCurrentFileName;
     private static ScreenRecorder sScreenRecorder;
@@ -79,6 +86,7 @@ public class ScreenRecorderService extends IntentService
         } else {
             sActionSound.play(MediaActionSound.STOP_VIDEO_RECORDING);
             sScreenRecorder.stop();
+            postProcessingNotification();
         }
     }
 
@@ -103,14 +111,17 @@ public class ScreenRecorderService extends IntentService
         final ContentResolver resolver = getContentResolver();
         final Resources res = getResources();
 
-        int[] dimensions = getVideoDimensions(res, display);
-        int bitRate = Settings.System.getInt(getContentResolver(),
+        final int[] dimensions = getVideoDimensions(res, display);
+        final int bitRate = Settings.System.getInt(resolver,
                 Settings.System.SCREEN_RECORDER_BITRATE,
                 res.getInteger(R.integer.config_screenRecorderFramerate));
-        sScreenRecorder.init(rotation, dimensions[0], dimensions[1], bitRate, 0);
+        final boolean recordAudio = Settings.System.getInt(resolver,
+                Settings.System.SCREEN_RECORDER_RECORD_AUDIO, 0) == 1;
+
+        sScreenRecorder.init(rotation, dimensions[0], dimensions[1], bitRate, 0, recordAudio);
         File f = new File(RECORDER_PATH);
         if (!f.exists()) {
-            if (!f.mkdir() || f.isDirectory()) {
+            if (!f.mkdir()) {
                 Log.e(TAG, "Unable to create output directory " + RECORDER_PATH);
                 postRecordingErrorNotification(
                         getString(R.string.error_unable_to_create_directory));
@@ -132,7 +143,12 @@ public class ScreenRecorderService extends IntentService
     /* Screen recorder callbacks */
     @Override
     public void onRecordingStarted() {
-        sActionSound.play(MediaActionSound.START_VIDEO_RECORDING);
+        final boolean recordAudio = Settings.System.getInt(getContentResolver(),
+                Settings.System.SCREEN_RECORDER_RECORD_AUDIO, 0) == 1;
+        // only play the start recording sound when only video is being recorded
+        // otherwise the sound will be picked up by the mic and included which
+        // isn't really desirable.
+        if (!recordAudio) sActionSound.play(MediaActionSound.START_VIDEO_RECORDING);
         postRecordingNotification();
     }
 
@@ -148,27 +164,68 @@ public class ScreenRecorderService extends IntentService
     }
 
     private void postRecordingNotification() {
+        // set an action for stopping recording
         Intent intent = new Intent(ACTION_NOTIFY_RECORD_SERVICE);
-        PendingIntent contentIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+        PendingIntent stopIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+        intent = new Intent(this, ScreenRecorderService.class);
+
+        // set an action for toggling show touches
+        intent.setAction(ACTION_NOTIFY_TOGGLE_SHOW_TOUCHES);
+        PendingIntent showTouchesIntent = PendingIntent.getService(this, 0,
+                intent, 0);
+        final boolean showTouches = Settings.System.getInt(getContentResolver(),
+                Settings.System.SHOW_TOUCHES, 0) == 1;
         NotificationManager nm =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         Notification notice = new Notification.Builder(this)
                 .setAutoCancel(false)
                 .setOngoing(true)
                 .setContentTitle(getString(R.string.notification_recording_title))
-                .setContentText(getString(R.string.notification_recording_text))
                 .setSmallIcon(R.drawable.ic_notify_screen_recorder)
                 .setWhen(System.currentTimeMillis())
-                .setContentIntent(contentIntent)
+                .setPriority(Integer.MAX_VALUE)
+                .addAction(R.drawable.ic_stop_recording,
+                        getString(R.string.notification_action_stop_recording), stopIntent)
+                .addAction(showTouches ? R.drawable.ic_show_touch_enabled
+                        : R.drawable.ic_show_touch_disabled,
+                        getString(R.string.notification_action_show_touch), showTouchesIntent)
+                .build();
+        nm.notify(NOTIFICATION_ID, notice);
+    }
+
+    private void postProcessingNotification() {
+        NotificationManager nm =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Notification notice = new Notification.Builder(this)
+                .setAutoCancel(true)
+                .setOngoing(false)
+                .setContentTitle(getString(R.string.notification_video_processing_title))
+                .setSmallIcon(R.drawable.ic_notify_screen_recorder)
+                .setWhen(System.currentTimeMillis())
                 .build();
         nm.notify(NOTIFICATION_ID, notice);
     }
 
     private void postRecordingFinishedNotification() {
+        long screenRecordTime = System.currentTimeMillis();
+        Uri uri = Uri.fromFile(new File(RECORDER_PATH + File.separator + sCurrentFileName));
+        String subjectDate = new SimpleDateFormat("hh:mma, MMM dd, yyyy")
+            .format(new Date(screenRecordTime));
+        String subject = String.format(SCREENRECORD_SHARE_SUBJECT_TEMPLATE, subjectDate);
+        Intent sharingIntent = new Intent(Intent.ACTION_SEND);
+        sharingIntent.setType("video/mp4");
+        sharingIntent.putExtra(Intent.EXTRA_STREAM, uri);
+        sharingIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
+
+        Intent chooserIntent = Intent.createChooser(sharingIntent, null);
+        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK
+                | Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        Intent deleteIntent = new Intent(ACTION_NOTIFY_DELETE_SCREENRECORD);
+        deleteIntent.putExtra(SCREENRECORD_PATH, RECORDER_PATH + File.separator + sCurrentFileName);
+
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(
-                Uri.fromFile(new File(RECORDER_PATH + File.separator + sCurrentFileName)),
-                "video/mp4");
+        intent.setDataAndType(uri, "video/mp4");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, intent, 0);
         NotificationManager nm =
@@ -180,8 +237,16 @@ public class ScreenRecorderService extends IntentService
                 .setContentText(getString(R.string.notification_recording_finished_text,
                         sCurrentFileName))
                 .setSmallIcon(R.drawable.ic_notify_screen_recorder)
-                .setWhen(System.currentTimeMillis())
-                .setContentIntent(contentIntent);
+                .setWhen(screenRecordTime)
+                .setContentIntent(contentIntent)
+                .addAction(com.android.internal.R.drawable.ic_menu_share,
+                        getString(com.android.internal.R.string.share),
+                        PendingIntent.getActivity(this, 0, chooserIntent,
+                                PendingIntent.FLAG_CANCEL_CURRENT))
+                .addAction(com.android.internal.R.drawable.ic_menu_delete,
+                        getString(com.android.internal.R.string.delete),
+                        PendingIntent.getBroadcast(this, 0, deleteIntent,
+                                PendingIntent.FLAG_CANCEL_CURRENT));
 
         // try and grab a frame as a preview
         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
@@ -252,8 +317,16 @@ public class ScreenRecorderService extends IntentService
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        if (ACTION_NOTIFY_RECORD_SERVICE.equals(intent.getAction())) {
+        final String action = intent.getAction();
+        if (ACTION_NOTIFY_RECORD_SERVICE.equals(action)) {
             startOrStopRecording();
+        } else if (ACTION_NOTIFY_TOGGLE_SHOW_TOUCHES.equals(action)) {
+            final boolean showTouches = Settings.System.getInt(getContentResolver(),
+                    Settings.System.SHOW_TOUCHES, 0) == 1;
+            Settings.System.putInt(getContentResolver(),
+                    Settings.System.SHOW_TOUCHES, showTouches ? 0 : 1);
+            // call postRecordingNotification so the icon gets updated based on this change
+            postRecordingNotification();
         }
     }
 }

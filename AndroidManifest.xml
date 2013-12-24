@@ -19,6 +19,7 @@
                   android:permission="android.permission.RECORD_SCREEN">
             <intent-filter>
                 <action android:name="org.chameleonos.action.NOTIFY_RECORD_SERVICE"/>
+                <action android:name="org.chameleonos.action.NOTIFY_DELETE_SCREENRECORD"/>
             </intent-filter>
         </receiver>
     </application>

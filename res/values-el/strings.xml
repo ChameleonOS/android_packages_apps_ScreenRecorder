@@ -4,7 +4,6 @@
     <string name="app_name">ScreenRecorder</string>
 
     <string name="notification_recording_title">Η καταγραφή οθόνης βρίσκεται σε εξέλιξη</string>
-    <string name="notification_recording_text">Πατήστε αυτή την ειδοποίηση για να σταματήσετε την καταγραφή</string>
 
     <string name="notification_recording_finished_title">Η καταγραφή αποθηκεύτηκε</string>
     <string name="notification_recording_finished_text">Πατήστε για να δείτε %s</string>

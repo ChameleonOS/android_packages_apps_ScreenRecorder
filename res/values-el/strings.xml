@@ -11,6 +11,11 @@
     <string name="notification_recording_error_title">Σφάλμα</string>
     <string name="notification_recording_error_text">%s</string>
 
+    <string name="notification_video_processing_title">Γίνεται επεξεργασία του βίντεο</string>
+
+    <string name="notification_action_stop_recording">Διακοπή καταγραφής</string>
+    <string name="notification_action_show_touch">Εμφάνιση αγγιγμάτων</string>
+
     <string name="error_unable_to_create_directory">Δεν ήταν δυνατή η δημιουργία φακέλου αποθήκευσης.</string>
     <string name="error_external_storage_unavailable">Δεν υπάρχει εξωτερικός χώρος αποθήκευσης.</string>
     <string name="error_unable_to_start">Δεν είναι δυνατή η εκκίνηση της καταγραφής.</string>
